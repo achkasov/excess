@@ -1,6 +1,5 @@
 //src/table.h: Table manupilation functions 
-//  Dmitry ACHKASOV <achkasov.dmitry@live.com>
-//  2024-12-23
+//2024-12-25, Dmitry ACHKASOV <achkasov.dmitry+xs@live.com>
 
 
 #pragma once
@@ -61,6 +60,16 @@ Table* table_col_rem(Table* tbl, uint idx) {
 }
 
 
+//Grows the table count if there is not enough column
+Table* table_col_grow(Table* tbl, uint new_size) {
+    int extra = (int)new_size - (int)get_len(tbl);
+    if(extra <= 0) {
+        return tbl;
+    }
+    Table* new_head = (Table*)node_append_empty_n(tbl, extra);
+    return new_head;
+}
+
 Table* table_row_ins(Table* tbl, uint idx) {
     assert(!"Unimplemented");
 }
@@ -71,6 +80,13 @@ Table* table_row_rem(Table* tbl, uint idx) {
 }
 
 
+//Returns the Column ptr or NULL
+Column* table_col_get(Table* tbl, uint col) {
+    return (Column*)node_get(tbl, col);
+}
+
+
+//Returns the Cell ptr or NULL
 Cell* table_cell_get(Table* tbl, uint row, uint col) {
     Column* col_cur = (Column*)node_get(tbl, col);
     if(col_cur == NULL) {
@@ -87,6 +103,8 @@ Cell* table_cell_get(Table* tbl, uint row, uint col) {
 }
 
 
-
+void table_cell_data_set(Table tbl, uint row, uint col) {
+    
+}
 
 

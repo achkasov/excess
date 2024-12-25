@@ -1,6 +1,5 @@
 //src/main.c
-//  Dmitry ACHKASOV <achkasov.dmitry@live.com>
-//  2024-12-23
+//  2024-12-25, Dmitry ACHKASOV <achkasov.dmitry+xs@live.com>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -100,7 +99,6 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                 int buf_len = read_input(buf);
                 char* text = (char*)calloc(sizeof(char) * buf_len);
                 utf8ncpy(text, buf, buf_len);
-
 
                 state.modified = true;
                 state.cur_row++;

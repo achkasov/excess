@@ -1,7 +1,6 @@
 //src/llist: Linked list implementation
-//  We're reïnventing wheels here
-//  Dmitry ACHKASOV <achkasov.dmitry@live.com>
-//  2024-12-23
+//We're reïnventing wheels here
+//2024-12-25, Dmitry ACHKASOV <achkasov.dmitry+xs@live.com>
 
 #pragma once
 #include <stdio.h>
@@ -37,8 +36,6 @@ Node* node_new_empty(void) {
     new_node->next = NULL;
     return new_node;
 }
-
-
 
 
 ///Returns pointer to the last element
@@ -152,5 +149,6 @@ Node* node_ins(Node* head, Node* new_node, uint idx) {
         return head;
     }
 }
+
 
 
