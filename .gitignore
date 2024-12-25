@@ -1,7 +1,8 @@
 bin/
+bin/*
 
-.git
-.o
-.so
+*.git
+*.o
+*.so
 
 tags
