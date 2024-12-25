@@ -66,7 +66,7 @@ Node* node_get(Node* head, uint idx) {
 uint node_len(Node* head) {
     Node* node = head;
     uint len = 0;
-    while (node->next != NULL) {
+    while (node != NULL) {
         node = node->next;
         len++;
     }

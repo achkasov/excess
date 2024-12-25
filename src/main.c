@@ -20,7 +20,7 @@ struct State {
     uint cur_row;
     uint cur_col;
     bool modified;
-    Table *table;
+    Column *tbl_head;
 };
 
 
@@ -42,14 +42,14 @@ int read_input(char *buf) {
 
 
 int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
-    Table* tbl = table_new_empty();
+    Column* tbl = tbl_new_empty();
 
     struct State state = {
         .mode = MODE_CMD,
         .cur_row = 0,
         .cur_col = 0,
         .modified = false,
-        .table = tbl,
+        .tbl_head = tbl,
     };
 
     char cmd[256];
@@ -59,14 +59,21 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
 
 
     for(;;) {
+        printf("INFO: Entering switch()\n");
         switch (state.mode) {
             case MODE_CMD: {
+                printf("INFO: Entering command mode.\n");
+
                 printf(CFG_PROMPT);
+                printf("INFO: Starting reading the prompt\n");
                 void *err = fgets(cmd, sizeof(cmd), stdin);
                 if (err == NULL) {
                     printf("ERROR: Unable to read string\n");
                     exit(EXIT_FAILURE);
                 }
+                printf("INFO: Success\n");
+
+                
                 cmd[utf8cspn(cmd, "\n")] = '\0';    //remove new line
 
                 printf("\n");
@@ -83,26 +90,68 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                 else if (utf8cmp(cmd, "a") == 0) {
                     // TODO: append a.cur_row to each.cur_column 
                     // below the current one and insert into it
-                    state.table = table_row_ins(state.table, state.cur_row);
+                    state.tbl_head = tbl_row_ins(state.tbl_head, state.cur_row);
                     state.cur_row++;
                     state.mode = MODE_INSERT;
-                } 
+                }
+                else if(utf8cmp(cmd, "dbg") == 0) {
+                    uint col_cnt = node_len(state.tbl_head);
+                    uint row_cnt = node_len(state.tbl_head->data);
+                    printf("Total columns: %d, Column A length: %d", col_cnt, row_cnt);
+                }
                 else if (utf8cmp(cmd, "p") == 0) {
-                    printf("%c%i\n", state.cur_col + 'A', state.cur_row + 1);
+                    Cell* cur_cell = tbl_cell_get_raw(state.tbl_head, state.cur_row, state.cur_col);
+                    if(cur_cell != NULL) {
+                        if(cur_cell->data != NULL)
+                        {
+                            utf8cpy(buf, cur_cell->data);
+                        }
+                    }
+                    printf("%c%i: %s\n", state.cur_col + 'A', state.cur_row + 1, buf);
                 } 
                 else  {
                     printf("?\n");
                 }
                 break;
             }
-            case MODE_INSERT: {  
-                int buf_len = read_input(buf);
-                char* text = (char*)calloc(sizeof(char) * buf_len);
-                utf8ncpy(text, buf, buf_len);
+            case MODE_INSERT: { 
+                // printf("INFO: Entering insert mode.\n");
 
+                // printf("INFO: Reading input...\n");
+                int buf_len = read_input(buf);
+                // printf("INFO: Success\n");
+
+                // printf("INFO: Calling calloc()...\n");
+                char* text = (char*)calloc(buf_len, sizeof(char));
+                // printf("INFO: Success\n");
+
+                // printf("INFO: utf8ncpy()...\n");
+                utf8ncpy(text, buf, buf_len);
+                // printf("INFO: Success\n");
+
+                // printf("INFO: Getting cell (potentially allocating)...\n");
+                Cell* cur_cell = tbl_cell_get(state.tbl_head, state.cur_row, state.cur_col);
+                assert(cur_cell != NULL);
+                printf("INFO: Success\n");
+               
+                printf("INFO: assigning cur_cell->data...\n");
+                cur_cell->data = (void*)text;
+                printf("INFO: Success\n");
+
+                printf("INFO: assigning state.modified...\n");
                 state.modified = true;
+                printf("INFO: Success\n");
+
+              
+                printf("INFO: incrementing state.cur_row...\n");
                 state.cur_row++;
+                printf("INFO: Success\n");
+
+                printf("INFO: assigning state.mode...\n");
                 state.mode = MODE_CMD;
+                printf("INFO: Success\n");
+
+                printf("INFO: Exiting insert mode.\n");
                 break;
             }
         }
