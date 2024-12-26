@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-
 typedef struct Node {
     void* data;
     struct Node* next;
@@ -16,7 +15,7 @@ typedef struct Node {
 ///Returns ptr to a Node
 Node* node_new(void* data) {
     Node* new_node = (Node*)malloc(sizeof(Node));
-    if (!new_node) {
+    if (new_node == NULL) {
         fprintf(stderr, "Memory allocation failed!\n");
         exit(EXIT_FAILURE);
     }
@@ -53,11 +52,14 @@ Node* node_last(Node* head) {
 Node* node_get(Node* head, uint idx) {
     Node* node = head;
     for (uint i=0; i<idx; i++) {
+        fprintf(stderr, "INFO: node_get() iteration: %d\n", idx);
         if(node == NULL) {
+            fprintf(stderr, "INFO: node_get() returning %d = NULL\n", idx);
             return NULL;
         }
         node = node->next;
     }
+    fprintf(stderr, "INFO: node_get() returning %d (non NULL)\n", idx);
     return node;
 }
 

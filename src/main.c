@@ -15,36 +15,19 @@ enum Mode {
 };
 
 
-struct State {
+typedef struct {
     enum Mode mode;
     uint cur_row;
     uint cur_col;
     bool modified;
     Column *tbl_head;
-};
-
-
-int read_input(char *buf) {
-    uint i = 0;
-    for(;;) {
-        char c = getchar();
-        if (c == '\n') {
-            putchar('\n');
-            if (i > 0 &&buf[i-1] == '.') {
-                buf[i-1] = '\0';
-                return i;
-            };
-        }
-        buf[i] = c;
-        i++;
-    }
-}
+} State;
 
 
 int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
+    fprintf(stderr, "INFO: Initialising the file state... ");
     Column* tbl = tbl_new_empty();
-
-    struct State state = {
+    State state = {
         .mode = MODE_CMD,
         .cur_row = 0,
         .cur_col = 0,
@@ -54,43 +37,51 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
 
     char cmd[256];
     uint cmd_idx = 0;
-    char buf[1024];
+    char buf[1024] = {0};
     uint buf_idx = 0;
+    fprintf(stderr, "Success\n");
 
 
     for(;;) {
-        printf("INFO: Entering switch()\n");
+        cmd[0] = '\0';
+        buf[0] = '\0';
+        fprintf(stderr, "INFO: Entering switch().\n");
         switch (state.mode) {
             case MODE_CMD: {
-                printf("INFO: Entering command mode.\n");
+                fprintf(stderr, "Success: Entering command mode\n");
 
                 printf(CFG_PROMPT);
-                printf("INFO: Starting reading the prompt\n");
+                fprintf(stderr, "INFO: Starting reading the prompt... ");
                 void *err = fgets(cmd, sizeof(cmd), stdin);
                 if (err == NULL) {
-                    printf("ERROR: Unable to read string\n");
+                    fprintf(stderr, "Failure:: Unable to read string. Terminating.\n");
                     exit(EXIT_FAILURE);
                 }
-                printf("INFO: Success\n");
+                fprintf(stderr, "Success\n");
 
-                
                 cmd[utf8cspn(cmd, "\n")] = '\0';    //remove new line
-
                 printf("\n");
                 if (utf8cmp(cmd, "q") == 0) {
+                    fprintf(stderr, "INFO: Selected 'q'. Exiting the app.\n");
                     exit(EXIT_SUCCESS);
                 } 
                 else if (utf8cmp(cmd, ".") == 0) {
-                     state.mode = MODE_CMD;
+                    fprintf(stderr, "INFO: Selected '.'. Changing mode to CMD.\n");
+                    state.mode = MODE_CMD;
                 } 
                 else if (utf8cmp(cmd, "i") == 0) {
                     // TODO: insert into current cell
+                    fprintf(stderr, "INFO: Selected 'i'. Changing mode to INSERT.\n");
                     state.mode = MODE_INSERT;
                 } 
                 else if (utf8cmp(cmd, "a") == 0) {
                     // TODO: append a.cur_row to each.cur_column 
                     // below the current one and insert into it
+                    fprintf(stderr, "INFO: Selected 'a'. inserting a new row... ");
                     state.tbl_head = tbl_row_ins(state.tbl_head, state.cur_row);
+                    fprintf(stderr, "Success\n");
+
+                    fprintf(stderr, "INFO: Incrementing the row number. Changing mode to INSERT.\n");
                     state.cur_row++;
                     state.mode = MODE_INSERT;
                 }
@@ -100,63 +91,94 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                     printf("Total columns: %d, Column A length: %d", col_cnt, row_cnt);
                 }
                 else if (utf8cmp(cmd, "p") == 0) {
+                    fprintf(stderr, "INFO: Selected 'p'.\n");
+                    fprintf(stderr, "INFO: Getting current cell...\n");
                     Cell* cur_cell = tbl_cell_get_raw(state.tbl_head, state.cur_row, state.cur_col);
                     if(cur_cell != NULL) {
-                        if(cur_cell->data != NULL)
-                        {
+                        fprintf(stderr, "Success: it exists\n");
+                        fprintf(stderr, "INFO: Getting current cell data... ");
+                        if(cur_cell->data != NULL) {
+                            fprintf(stderr, "Success: It has data\n");
+                            fprintf(stderr, "INFO: cloning the text data into the temp buffer using utf8cpy()... "); 
                             utf8cpy(buf, cur_cell->data);
+                            fprintf(stderr, "Success\n");
                         }
                     }
+                    fprintf(stderr, "INFO: Printing the cell data.\n");
                     printf("%c%i: %s\n", state.cur_col + 'A', state.cur_row + 1, buf);
-                } 
+                }
+                else if (utf8cmp(cmd, "Ap") == 0) {
+                    fprintf(stderr, "INFO: Selected 'Ap'.\n");
+                    fprintf(stderr, "INFO: Getting current cell...\n");
+                    Column* col_A = state.tbl_head;
+                    if(col_A == NULL) {
+                        printf("\t-NULL-\n");
+                    } else {
+                        printf("\t%c\n", 0 + 'A');
+                    }
+                    Cell* cur_cell = col_A->data;
+                    uint idx = 0;
+                    while(cur_cell != NULL) {
+                        if(cur_cell->data != NULL) {
+                            utf8cpy(buf, cur_cell->data);
+                        }
+                        printf("%7d\t%.8s\n", idx + 1, buf);
+                        idx++;
+                        cur_cell = cur_cell->next;
+                    }
+                    if(cur_cell == NULL) {
+                        printf("\t-NULL-\n");
+                    }
+                }
                 else  {
+                    fprintf(stderr, "WARN: Unknown command entered.\n");
                     printf("?\n");
                 }
                 break;
             }
             case MODE_INSERT: { 
-                // printf("INFO: Entering insert mode.\n");
-
-                // printf("INFO: Reading input...\n");
-                int buf_len = read_input(buf);
-                // printf("INFO: Success\n");
-
-                // printf("INFO: Calling calloc()...\n");
-                char* text = (char*)calloc(buf_len, sizeof(char));
-                // printf("INFO: Success\n");
-
-                // printf("INFO: utf8ncpy()...\n");
-                utf8ncpy(text, buf, buf_len);
-                // printf("INFO: Success\n");
-
-                // printf("INFO: Getting cell (potentially allocating)...\n");
-                Cell* cur_cell = tbl_cell_get(state.tbl_head, state.cur_row, state.cur_col);
-                assert(cur_cell != NULL);
-                printf("INFO: Success\n");
-               
-                printf("INFO: assigning cur_cell->data...\n");
-                cur_cell->data = (void*)text;
-                printf("INFO: Success\n");
-
-                printf("INFO: assigning state.modified...\n");
+                fprintf(stderr, "Success: Entering insert mode\n");
+                uint buf_idx = 0;
+                buf[0] = '\0';
+                char c = '\0';
+                char prev_c = '\0';
+                bool end_of_input = false;
+                while(!end_of_input) {
+                    prev_c = c;
+                    c = getchar();
+                    if ((prev_c == CFG_EOL_TOKEN) && (c == '\n')) {
+                        fprintf(stderr, "INFO: EOL identified. Current buf[]: ");
+                        buf[buf_idx] = '\0';      // replace '\n' with '\0'
+                        fprintf(stderr, "%s\n", &buf);
+                        buf_idx--;
+                        end_of_input = true;
+                    } else
+                    if (c == '\n') {
+                        putchar('\n');
+                        char* cell_data = (char*)calloc(buf_idx, sizeof(char));
+                        fprintf(stderr, "INFO: calloc() succesfull\n");
+                        utf8ncpy(cell_data, buf, buf_idx);
+                        fprintf(stderr, "INFO: utfncpy() succesfull\n");
+                        tbl_cell_data_set(state.tbl_head, state.cur_row, state.cur_col, cell_data);
+                        fprintf(stderr, "INFO: tabl_cell_data_set() succesfull\n");
+                        state.cur_row++;
+                        buf_idx = 0;
+                    }
+                    else {
+                        fprintf(stderr, "INFO: Setting buf[%d]: %c\n", buf_idx, c);
+                        buf[buf_idx] = c;
+                        buf_idx++;
+                    }
+                }
                 state.modified = true;
-                printf("INFO: Success\n");
-
-              
-                printf("INFO: incrementing state.cur_row...\n");
-                state.cur_row++;
-                printf("INFO: Success\n");
-
-                printf("INFO: assigning state.mode...\n");
                 state.mode = MODE_CMD;
-                printf("INFO: Success\n");
-
-                printf("INFO: Exiting insert mode.\n");
+                fprintf(stderr, "INFO: Exiting insert mode.\n");
                 break;
             }
         }
     }
     printf("\n");
+    fprintf(stderr, "INFO: Exiting the app\n");
     exit(EXIT_SUCCESS);
 } 
 
