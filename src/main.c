@@ -1,13 +1,29 @@
 //src/main.c
-//  2024-12-25, Dmitry ACHKASOV <achkasov.dmitry+xs@live.com>
+//2024-12-25, Dmitry ACHKASOV <achkasov.dmitry+xs@live.com>
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <utf8.h>
+#include <termios.h>
+#include <unistd.h>
 #include "cfg.h"
 #include "llist.h"
 #include "table.h"
+
+void enable_raw_mode() {
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty); // Get current terminal settings
+    tty.c_lflag &= ~(ICANON); // Disable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &tty); // Apply new settings immediately
+}
+
+void disable_raw_mode() {
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty); // Get current terminal settings
+    tty.c_lflag |= (ICANON | ECHO); // Enable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &tty); // Apply new settings immediately
+}
 
 enum Mode {
     MODE_CMD,
@@ -36,9 +52,7 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
     };
 
     char cmd[256];
-    uint cmd_idx = 0;
     char buf[1024] = {0};
-    uint buf_idx = 0;
     fprintf(stderr, "Success\n");
 
 
@@ -47,9 +61,9 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
         buf[0] = '\0';
         fprintf(stderr, "INFO: Entering switch().\n");
         switch (state.mode) {
-            case MODE_CMD: {
+           case MODE_CMD: {
                 fprintf(stderr, "Success: Entering command mode\n");
-
+                disable_raw_mode();
                 printf(CFG_PROMPT);
                 fprintf(stderr, "INFO: Starting reading the prompt... ");
                 void *err = fgets(cmd, sizeof(cmd), stdin);
@@ -69,9 +83,9 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                     fprintf(stderr, "INFO: Selected '.'. Changing mode to CMD.\n");
                     state.mode = MODE_CMD;
                 } 
-                else if (utf8cmp(cmd, "i") == 0) {
-                    // TODO: insert into current cell
-                    fprintf(stderr, "INFO: Selected 'i'. Changing mode to INSERT.\n");
+                else if (utf8cmp(cmd, "r") == 0) {
+                    // TODO: replace current cell
+                    fprintf(stderr, "INFO: Selected 'r'. Changing mode to INSERT.\n");
                     state.mode = MODE_INSERT;
                 } 
                 else if (utf8cmp(cmd, "a") == 0) {
@@ -136,9 +150,12 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                 }
                 break;
             }
-            case MODE_INSERT: { 
+
+            case MODE_INSERT: {
                 fprintf(stderr, "Success: Entering insert mode\n");
+                enable_raw_mode();
                 uint buf_idx = 0;
+                uint col_offset = 0;
                 buf[0] = '\0';
                 char c = '\0';
                 char prev_c = '\0';
@@ -146,23 +163,50 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                 while(!end_of_input) {
                     prev_c = c;
                     c = getchar();
+                    fprintf(stderr, "INFO: getchar(): '%c'\n", c);
                     if ((prev_c == CFG_EOL_TOKEN) && (c == '\n')) {
                         fprintf(stderr, "INFO: EOL identified. Current buf[]: ");
                         buf[buf_idx] = '\0';      // replace '\n' with '\0'
-                        fprintf(stderr, "%s\n", &buf);
+                        fprintf(stderr, "%s\n", buf);
                         buf_idx--;
                         end_of_input = true;
+                        fflush(stdout);
+                        disable_raw_mode();
                     } else
-                    if (c == '\n') {
-                        putchar('\n');
+                    if ((c == '\n') || (c == '\t')) {
+                        //End of row
+                        fprintf(stderr, "INFO: End of cell [%d,%d] identified.\n", state.cur_row, state.cur_col + col_offset);
+                        buf[buf_idx] = '\0';
                         char* cell_data = (char*)calloc(buf_idx, sizeof(char));
                         fprintf(stderr, "INFO: calloc() succesfull\n");
+                        fprintf(stderr, "INFO: utfncpy(\"%s\") to cell_data\n", buf);
                         utf8ncpy(cell_data, buf, buf_idx);
                         fprintf(stderr, "INFO: utfncpy() succesfull\n");
-                        tbl_cell_data_set(state.tbl_head, state.cur_row, state.cur_col, cell_data);
-                        fprintf(stderr, "INFO: tabl_cell_data_set() succesfull\n");
-                        state.cur_row++;
+                        tbl_cell_data_set(state.tbl_head, state.cur_row, state.cur_col + col_offset, cell_data);
+                        fprintf(stderr, "INFO: tbl_cell_data_set(): TABLE[%d,%d] <= \"%s\"\n", state.cur_row, state.cur_col + col_offset, cell_data);
                         buf_idx = 0;
+
+                        switch(c) {
+                            case '\n': {
+                                
+                                col_offset = 0;
+                                state.cur_row++;
+                                break;
+                            }
+
+                            case '\t': {
+                                col_offset++;
+                                break;
+                            }
+
+                            default: { 
+                                unreachable();
+                                break;
+                            }
+                        }
+                        buf_idx = 0;
+                        col_offset = 0;
+                        state.cur_row++;
                     }
                     else {
                         fprintf(stderr, "INFO: Setting buf[%d]: %c\n", buf_idx, c);
@@ -173,6 +217,7 @@ int main([[maybe_unused]]int argc, [[maybe_unused]]char **argv) {
                 state.modified = true;
                 state.mode = MODE_CMD;
                 fprintf(stderr, "INFO: Exiting insert mode.\n");
+                disable_raw_mode();
                 break;
             }
         }
