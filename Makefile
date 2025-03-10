@@ -1,8 +1,8 @@
-all: ./bin/xs
+all: ./xs
 
-./bin/xs: ./src/main.c
+./xs: ./src/main.c
 	mkdir -p ./bin/
-	gcc -std=c2x -Wall -Wextra -pedantic -o ./bin/xs -s ./src/main.c -I./vendor
+	$(CC) -std=c2x -Wall -Wextra -pedantic -o ./bin/xs -s ./src/main.c -I./vendor
 
 clean: 
-	rm -rf ./bin/
+	rm -rf ./xs
