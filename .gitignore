@@ -1,8 +1,5 @@
-bin/
-bin/*
-
 *.git
 *.o
 *.so
-
+xs
 tags
