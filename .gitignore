@@ -1,5 +1,6 @@
-*.git
+.clang-format
+.git
+*.core
 *.o
-*.so
-xs
 tags
+xs

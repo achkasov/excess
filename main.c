@@ -1,59 +1,42 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <sys/queue.h>
+// main.c
+
+
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/queue.h>
 #include <time.h>
 
 #include "list.h"
+#include "table.h"
 
 #define PROMPT >
 
+int main(void)
+{
+    list_t* tbl = list_alloc_named("Table");
+    tbl->meta.child_tag = NT_LIST;
 
-int main() {
-    cell_t* head = NULL;
-    cell_t* cell = NULL;
-    cell_t* prev = NULL;
-
-    cell = malloc(sizeof(cell_t));
-    assert(cell != NULL);
-    cell->type = CT_INT;
-    cell->data = (void*)(42);
-    cell->next = NULL;
-    head = cell;
-
-    cell_print(cell, 8);
-
-
-    for (size_t i=0; i<10; ++i) {
-        prev = cell;
-        cell = NULL;
-        if ((cell = malloc(sizeof(cell_t))) == NULL) exit(EXIT_FAILURE);
-        cell->type = CT_INT;
-        cell->data = (void*) i;
-        cell->next = NULL;
-        prev->next = cell;
+    char col_name_buf[256];
+    for (int i = 0; i < 10; i += 1) {
+        sprintf(col_name_buf, "Col%i", i);
+        list_t* rows = list_alloc_named(col_name_buf);
+        node_t* col = node_alloc_list(rows);
+        tbl = list_append(tbl, col);
     }
 
-
-    cell = head;
-    prev = NULL;
-    for (;;) {
-        if (cell == NULL) break;
-        cell_print(cell, 8);
-        printf("\n");
-        cell = cell->next;
+    list_t* col1 = list_alloc_named("#");
+    node_t* col1_node = node_alloc_list(col1);
+    tbl = list_insert_at(tbl, col1_node, 11);
+    for (int i = 0; i < 20; i += 1) {
+        node_t* node = node_alloc_int((ssize_t)i);
+        col1 = list_append(col1, node);
     }
 
+    tbl_print(tbl, 5);
 
-    int idx = 0;
-    cell = cells_get(head, idx);
-    printf("cell[%d]: ", idx);
-    cell_print(cell, 8);
-    printf("\n");
-
-    cells_free(head);
-
+    list_free(tbl);
     return EXIT_SUCCESS;
 }
